@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>240P 视频下载工具</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 10px;
+            padding: 10px;
+            max-width: 300px;
+            background-color: #ffffff;
+            border: 1px solid #000000;
+        }
+
+        h2 {
+            text-align: center;
+            font-size: 18px;
+            color: #000000;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 5px;
+            font-size: 14px;
+            border: 1px solid #000000;
+        }
+
+        button {
+            width: 100%;
+            padding: 5px;
+            font-size: 14px;
+            background-color: #007bff;
+            color: #ffffff;
+            border: 1px solid #000000;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+        }
+
+        .status-message {
+            margin-top: 10px;
+            padding: 5px;
+            font-size: 12px;
+            border: 1px solid #000000;
+        }
+
+        .download-link {
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .download-link a {
+            color: #007bff;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h2>KiliKili 240P 视频下载工具</h2>
+
+    <!-- 输入 BVID -->
+    <div class="form-group">
+        <form id="bvidForm" action="#" onsubmit="handleBVIDSubmit(); return false;">
+            <input type="text" id="bvidInput" placeholder="输入 BVID">
+            <button id="submitButton" type="submit">提交 BVID</button>
+        </form>
+    </div>
+
+    <!-- 检测状态按钮 -->
+    <div class="form-group">
+        <button onclick="checkBVIDStatus()">检测任务状态</button>
+    </div>
+
+    <!-- 状态显示 -->
+    <div id="statusMessage" class="status-message"></div>
+
+    <!-- 下载链接 -->
+    <div id="downloadLink" class="download-link"></div>
+
+    <div id="footer">
+      <p>Author:</p>
+      <p>jiehuan233(jiehuan233@outlook.com)</p>
+      <p>©2024 Project Kinsler</p>
+    </div>
+
+    <script>
+        var apiIP = '192.168.1.13'
+        var apiPort = '3000'
+        // 基础 API URL
+        var apiBaseUrl = 'http://'+apiIP+':'+apiPort;
+
+        // 提交表单处理逻辑
+        function handleBVIDSubmit() {
+            var bvid = document.getElementById('bvidInput').value;
+            if (!bvid) {
+                displayStatusMessage('请输入有效的 BVID', 'error');
+                return;
+            }
+
+            // 调用上传 BVID API
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', apiBaseUrl + '/api/download?bvid=' + bvid, true);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    if (response.code === 1) {
+                        displayStatusMessage('任务已创建，BVID: ' + bvid, 'pending');
+                    } else if (response.code === 12) {
+                        displayStatusMessage('任务已存在', 'pending');
+                    } else {
+                        displayStatusMessage('任务不存在', 'error');
+                    }
+                } else if (xhr.readyState === 4) {
+                    displayStatusMessage('请求失败，请稍后再试', 'error');
+                }
+            };
+            xhr.send();
+        }
+
+        // 查询任务状态
+        function checkBVIDStatus() {
+            var bvid = document.getElementById('bvidInput').value;
+            if (!bvid) {
+                displayStatusMessage('请输入有效的 BVID', 'error');
+                return;
+            }
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', apiBaseUrl + '/api/status?taskId=' + bvid, true);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    if (response.code === 0) {
+                        displayStatusMessage('任务完成！BVID: ' + bvid, 'completed');
+                        displayDownloadLink(bvid);
+                    } else if (response.code === 11) {
+                        displayStatusMessage('任务排队中，前方任务数:'+response.queueLength, 'pending');
+                    } else if (response.code === 10) {
+                        displayStatusMessage('任务处理中', 'pending');
+                    } else {
+                        displayStatusMessage('任务未找到', 'error');
+                    }
+                } else if (xhr.readyState === 4) {
+                    displayStatusMessage('请求失败，请稍后再试', 'error');
+                }
+            };
+            xhr.send();
+        }
+
+        // 显示状态消息
+        function displayStatusMessage(message, type) {
+            var statusMessage = document.getElementById('statusMessage');
+            statusMessage.textContent = message;
+        }
+
+        // 显示下载链接
+        function displayDownloadLink(bvid) {
+            var downloadLink = document.getElementById('downloadLink');
+            downloadLink.innerHTML = '<a href="' + apiBaseUrl + '/api/output/' + bvid + '_240p.mp4" target="_blank">点击下载</a>';
+        }
+    </script>
+</body>
+</html>
