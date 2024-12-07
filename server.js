@@ -6,7 +6,7 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
-const port = 3000;
+const port = 4000;
 
 // 存储任务队列
 let taskQueue = [];
@@ -15,15 +15,22 @@ app.use(cors());
 app.use(express.json()); // 解析 JSON 请求体
 app.use(express.urlencoded({ extended: true })); // 解析 URL 编码的请求体
 
+
+
+
 // 获取视频下载链接
-async function fetchVideoInfo(bvid) {
+async function fetchVideoInfo(bvid, cid = null) {
   try {
-    // 获取 CID
-    const cidResponse = await axios.get(`https://api.bilibili.com/x/player/pagelist`, {
-      params: { bvid }
-    });
-    const cid = cidResponse.data.data[0]?.cid;
-    if (!cid) throw new Error('无法获取视频 CID');
+    // 如果没有提供 cid，则根据 bvid 获取 CID 列表
+    if (!cid) {
+      const cidResponse = await axios.get(`https://api.bilibili.com/x/player/pagelist`, {
+        params: { bvid }
+      });
+
+      const firstPageData = cidResponse.data.data[0];
+      if (!firstPageData) throw new Error('无法获取任何页面的 CID');
+      cid = firstPageData.cid;
+    }
 
     // 获取播放链接
     const playResponse = await axios.get(`https://api.bilibili.com/x/player/playurl`, {
@@ -42,22 +49,26 @@ async function fetchVideoInfo(bvid) {
 
 // 添加下载任务
 app.get('/api/download', async (req, res) => {
-  const { bvid } = req.query;
+  const { bvid, cid } = req.query;
   if (!bvid) return res.status(400).json({ message: '缺少 BVID 参数' });
 
   try {
-    if(taskQueue.some(t => t.taskId === bvid)){
+    // 使用 cid 参数，若未提供则获取
+    const { cid: videoCid, videoUrl } = await fetchVideoInfo(bvid, cid);
+
+    if (taskQueue.some(t => t.taskId === videoCid)) {
       return res.json({ code: 12 });
     }
-    const { videoUrl } = await fetchVideoInfo(bvid);
 
-    const taskId = bvid;
+    const taskId = videoCid;
     const outputFilePath = `output/${taskId}_240p.mp4`;
-    console.log(`任务已添加： ${bvid}`)
+    console.log(`任务已添加： ${bvid}`);
+
     // 将任务添加到队列
     taskQueue.push({
       taskId,
       bvid,
+      cid: videoCid,
       videoUrl,
       outputFilePath,
       status: 'queued'
