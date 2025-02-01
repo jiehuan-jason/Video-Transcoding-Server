@@ -1,12 +1,14 @@
 # Video Transcoding Server
 
-将上传的视频转码为240p AAC_LC伴音
+将上传的视频转码为240p AAC_LC伴音，20min的视频转码后大小约为50MB
 
 ## 测试环境
 
 Nginx v1.23.3
 
 Node.js v20.17.0
+
+
 
 ## 使用前配置
 

@@ -175,17 +175,41 @@ setInterval(async () => {
 
 // 每日 24 点清理任务队列和文件
 function resetQueue() {
-  taskQueue = [];
-  const outputDir = path.join(__dirname, 'output');
-  const tempDir = path.join(__dirname, 'temp');
+  console.log('开始执行每日清理...');
 
-  [outputDir, tempDir].forEach(dir => {
-    if (fs.existsSync(dir)) {
-      fs.readdirSync(dir).forEach(file => fs.unlinkSync(path.join(dir, file)));
+  // 分离已完成和未完成的任务
+  const completedTasks = taskQueue.filter(t => t.status === 'completed');
+  const remainingTasks = taskQueue.filter(t => t.status !== 'completed');
+
+  // 更新任务队列，只保留未完成的任务
+  taskQueue = remainingTasks;
+
+  // 清理已完成任务的文件
+  completedTasks.forEach(task => {
+    try {
+      // 删除输出文件
+      const outputFile = path.join(__dirname, 'output', `${task.taskId}_240p.mp4`);
+      if (fs.existsSync(outputFile)) {
+        fs.unlinkSync(outputFile);
+        console.log(`已删除完成任务的输出文件: ${outputFile}`);
+      }
+
+      // 清理可能残留的临时文件（正常情况下转码完成时已删除）
+      const tempFile = path.join(__dirname, 'temp', `${task.taskId}.mp4`);
+      if (fs.existsSync(tempFile)) {
+        fs.unlinkSync(tempFile);
+        console.log(`已删除残留的临时文件: ${tempFile}`);
+      }
+    } catch (err) {
+      console.error(`清理任务 ${task.taskId} 文件时出错:`, err);
     }
   });
 
-  console.log('每日清理完成：队列及文件已重置');
+  // 记录清理结果
+  console.log(`每日清理完成：
+    已清理完成的任务数: ${completedTasks.length}
+    剩余未完成任务数: ${remainingTasks.length}
+    当前队列状态: ${remainingTasks.map(t => `${t.taskId}(${t.status})`).join(', ')}`);
 }
 
 // 每天 00:00 重置
